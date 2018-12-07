@@ -18,28 +18,10 @@ def main():
 
 	coords = tree.xpath("//gx:coord/text()",namespaces={'gx':'http://www.google.com/kml/ext/2.2'})
 	times = tree.xpath("//xmlns:when/text()", namespaces={'xmlns':'http://www.opengis.net/kml/2.2'})
+	updateData, noData ,since = kmlDateCheck(times[0])
 
-
-	if False:
-		#update data code
-		updateData, noData ,since = kmlDateCheck(times[0])
-		for ind, value in enumerate(times):
-			if value == since:
-				removeFrom = ind + 1
-				break
-		print(removeFrom)
-		timesToUpdate = times[:removeFrom]
-
-		print(len(times))
-		print(len(timesToUpdate))
-
-		prepTime = datetime.datetime.now()
-		print('prep time \t\t\t\t {}'.format(prepTime - scriptStartTime))
-
-		with open('data.json', 'w') as outfile:
-			json.dump(times[0], outfile)
-
-			
+	prepTime = datetime.datetime.now()
+	print('prep time \t\t\t\t {}'.format(prepTime - scriptStartTime))
 
 	if os.path.isfile('parsedKML.pickle'):
 		pickleStartTime = datetime.datetime.now()
@@ -50,7 +32,20 @@ def main():
 		pickle_in = open("heatDataLong.pickle","rb")
 		longheatmap = pickle.load(pickle_in)
 		pickleEndTime = datetime.datetime.now()	
-		print('unpickling time is\t\t {}'.format(pickleEndTime - pickleStartTime))	
+		print('unpickling time is\t\t {}'.format(pickleEndTime - pickleStartTime))
+		if updateData:
+			print('update the data')
+			for ind, value in enumerate(times):
+				if value == since:
+					removeFrom = ind + 1
+					break
+			print(removeFrom)
+			timesToUpdate = times[:removeFrom]
+			coordsToUpdate = coords[:removeFrom]
+			structedData, heatmapData, longheatmap = loadSection(timesToUpdate,coordsToUpdate, structedData, heatmapData, longheatmap)
+			with open('data.json', 'w') as outfile:
+				json.dump(times[0], outfile)
+
 	else:
 		loadAllStart = datetime.datetime.now()
 		structedData, heatmapData, longheatmap = loadAll(times, coords)
@@ -144,6 +139,26 @@ def loadAll(inTimes, inCoords):
 			heatmapDict2[(latitude,longitude)] = 1
 
 	return (structedData, heatmapDict, heatmapDict2)
+
+def loadSection(inTimes, inCoords, inData, inHeatMap, inHeatMap2):
+	for item in range(len(inTimes)):
+		currTime = parseTime2oBJ(inTimes[item])
+		currCoord = inCoords[item]
+		longitude,latitude = parseKMLCoord(currCoord)
+		longitudeR = round(longitude, 4)
+		latitudeR = round(latitude, 4)
+
+		inData.insert(0,{'time':currTime,'lat': latitude,'lon':longitude})
+		if (latitudeR,longitudeR) in inHeatMap:
+			inHeatMap[(latitudeR,longitudeR)] += 1
+		else:
+			inHeatMap[(latitudeR,longitudeR)] = 1
+		if (latitude,longitude) in inHeatMap2:
+			inHeatMap2[(latitude,longitude)] += 1
+		else:
+			inHeatMap2[(latitude,longitude)] = 1
+	return (inData, inHeatMap, inHeatMap2)
+
 
 def describeHeatMap(inHeat):
 	description ={}
