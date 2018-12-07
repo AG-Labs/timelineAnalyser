@@ -34,7 +34,6 @@ def main():
 		pickleEndTime = datetime.datetime.now()	
 		print('unpickling time is\t\t {}'.format(pickleEndTime - pickleStartTime))
 		if updateData:
-			print('update the data')
 			for ind, value in enumerate(times):
 				if value == since:
 					removeFrom = ind + 1
@@ -44,22 +43,18 @@ def main():
 			coordsToUpdate = coords[:removeFrom]
 			structedData, heatmapData, longheatmap = loadSection(timesToUpdate,coordsToUpdate, structedData, heatmapData, longheatmap)
 			with open('data.json', 'w') as outfile:
-				json.dump(times[0], outfile)
+				json.dump({'time':times[0]}, outfile, indent=4)
+			pickleData(structedData, heatmapData, longheatmap)
 
 	else:
 		loadAllStart = datetime.datetime.now()
 		structedData, heatmapData, longheatmap = loadAll(times, coords)
 		loadAllEnd = datetime.datetime.now()
 		print('load all time is \t\t {}'.format(loadAllEnd - loadAllStart))
-		pickle_out = open("parsedKML.pickle","wb")
-		pickle.dump(structedData, pickle_out)
-		pickle_out.close()
-		pickle_out = open("heatData.pickle","wb")
-		pickle.dump(heatmapData, pickle_out)
-		pickle_out.close()
-		pickle_out = open("heatDataLong.pickle","wb")
-		pickle.dump(longheatmap, pickle_out)
-		pickle_out.close()
+		pickleData(structedData, heatmapData, longheatmap)
+		with open('data.json', 'w') as outfile:
+			json.dump({'time':times[0]}, outfile, indent=4)
+
 
 	oneCoord = coords[0]
 	(oneLong,oneLat) = parseKMLCoord(oneCoord)
@@ -159,6 +154,19 @@ def loadSection(inTimes, inCoords, inData, inHeatMap, inHeatMap2):
 			inHeatMap2[(latitude,longitude)] = 1
 	return (inData, inHeatMap, inHeatMap2)
 
+def pickleData(inData, inHeatMap, inHeatMapLong):
+		pickle_out = open("parsedKML.pickle","wb")
+		pickle.dump(inData, pickle_out)
+		pickle_out.close()
+		pickle_out = open("heatData.pickle","wb")
+		pickle.dump(inHeatMap, pickle_out)
+		pickle_out.close()
+		pickle_out = open("heatDataLong.pickle","wb")
+		pickle.dump(inHeatMapLong, pickle_out)
+		pickle_out.close()
+		print('Pickled Data')
+
+
 
 def describeHeatMap(inHeat):
 	description ={}
@@ -174,7 +182,7 @@ def kmlDateCheck(inCurrentTime):
 
 	if os.path.isfile('data.json'):
 		json_data = open('data.json','r').read()
-		readTime = json.loads(json_data)
+		readTime = json.loads(json_data)['time']
 		storedCurrentTime = parseTime2oBJ(readTime)
 		readAll = False
 	else:
@@ -182,6 +190,7 @@ def kmlDateCheck(inCurrentTime):
 		readTime = storedCurrentTime.isoformat()+'Z'
 		readAll = True
 
+	print(currentTime,'\n',storedCurrentTime)
 	if currentTime > storedCurrentTime:
 		return(True,readAll,readTime)
 	else:
