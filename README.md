@@ -3,6 +3,9 @@ Analysis of google maps timeline data in Python, initial commit contains a numbe
 
 Future work: provide a visualsation of % visited at varying granularity; heat map visulation; and suggested places to go based on furthest point from currently visited areas
 
+###Prerequisites
+A copy of your Google Maps KML data is required. This can be found in the management section of your Google account, [Google Takeout](https://takeout.google.com/settings/takeout). I dont believe Android collects this data by default anymore due to data protection but can be easily turned on to passively collect GPS information from your device. My data stretches back to 2014.
+
 ## Authors
 
 * **Andrew Godley** - *All Work* - [AG Labs](https://github.com/AG-Labs)
