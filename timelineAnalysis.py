@@ -25,12 +25,7 @@ def main():
 
 	if os.path.isfile('parsedKML.pickle'):
 		pickleStartTime = datetime.datetime.now()
-		pickle_in = open("parsedKML.pickle","rb")
-		structedData = pickle.load(pickle_in)
-		pickle_in = open("heatData.pickle","rb")
-		heatmapData = pickle.load(pickle_in)
-		pickle_in = open("heatDataLong.pickle","rb")
-		longheatmap = pickle.load(pickle_in)
+		structedData, heatmapData = unpickleData()
 		pickleEndTime = datetime.datetime.now()	
 		print('unpickling time is\t\t {}'.format(pickleEndTime - pickleStartTime))
 		if updateData:
@@ -41,20 +36,18 @@ def main():
 			print(removeFrom)
 			timesToUpdate = times[:removeFrom]
 			coordsToUpdate = coords[:removeFrom]
-			structedData, heatmapData, longheatmap = loadSection(timesToUpdate,coordsToUpdate, structedData, heatmapData, longheatmap)
+			structedData, heatmapData = loadSection(timesToUpdate,coordsToUpdate, structedData, heatmapData)
 			with open('data.json', 'w') as outfile:
 				json.dump({'time':times[0]}, outfile, indent=4)
-			pickleData(structedData, heatmapData, longheatmap)
-
+			pickleData(structedData, heatmapData)
 	else:
 		loadAllStart = datetime.datetime.now()
-		structedData, heatmapData, longheatmap = loadAll(times, coords)
+		structedData, heatmapData = loadAll(times, coords)
 		loadAllEnd = datetime.datetime.now()
 		print('load all time is \t\t {}'.format(loadAllEnd - loadAllStart))
-		pickleData(structedData, heatmapData, longheatmap)
+		pickleData(structedData, heatmapData)
 		with open('data.json', 'w') as outfile:
 			json.dump({'time':times[0]}, outfile, indent=4)
-
 
 	oneCoord = coords[0]
 	(oneLong,oneLat) = parseKMLCoord(oneCoord)
@@ -88,7 +81,6 @@ def main():
 	print('extracting day with day2 took {}'.format(extractDayEnd2 - extractDayStart2))
 	print(len(my2018Oct10Data))
 
-
 	startRangeToExtract = datetime.datetime(2017,8,1)
 	endRangeToExtract = datetime.datetime(2018,8,31)
 
@@ -109,7 +101,9 @@ def parseKMLCoord(inCoord):
 	longitude,latitude, _ = inCoord.split(' ')
 	intLat = float(latitude)
 	intLong = float(longitude)
-	return (intLong, intLat)
+	outLat = round(intLat, 5)
+	outLong = round(intLong, 5)
+	return (outLong, outLat)
 
 def loadAll(inTimes, inCoords):
 	structedData = []
@@ -120,39 +114,28 @@ def loadAll(inTimes, inCoords):
 		currTime = parseTime2oBJ(inTimes[item])
 		currCoord = inCoords[item]
 		longitude,latitude = parseKMLCoord(currCoord)
-		longitudeR = round(longitude, 4)
-		latitudeR = round(latitude, 4)
 
 		structedData.append({'time':currTime,'lat': latitude,'lon':longitude})
-		if (latitudeR,longitudeR) in heatmapDict:
-			heatmapDict[(latitudeR,longitudeR)] += 1
+		if (latitude,longitude) in heatmapDict:
+			heatmapDict[(latitude,longitude)] += 1
 		else:
-			heatmapDict[(latitudeR,longitudeR)] = 1
-		if (latitude,longitude) in heatmapDict2:
-			heatmapDict2[(latitude,longitude)] += 1
-		else:
-			heatmapDict2[(latitude,longitude)] = 1
+			heatmapDict[(latitude,longitude)] = 1
 
-	return (structedData, heatmapDict, heatmapDict2)
+	return (structedData, heatmapDict)
 
-def loadSection(inTimes, inCoords, inData, inHeatMap, inHeatMap2):
+def loadSection(inTimes, inCoords, inData, inHeatMap):
 	for item in range(len(inTimes)):
 		currTime = parseTime2oBJ(inTimes[item])
 		currCoord = inCoords[item]
 		longitude,latitude = parseKMLCoord(currCoord)
-		longitudeR = round(longitude, 4)
-		latitudeR = round(latitude, 4)
 
 		inData.insert(0,{'time':currTime,'lat': latitude,'lon':longitude})
-		if (latitudeR,longitudeR) in inHeatMap:
-			inHeatMap[(latitudeR,longitudeR)] += 1
+		if (latitude,longitude) in inHeatMap:
+			inHeatMap[(latitude,longitude)] += 1
 		else:
-			inHeatMap[(latitudeR,longitudeR)] = 1
-		if (latitude,longitude) in inHeatMap2:
-			inHeatMap2[(latitude,longitude)] += 1
-		else:
-			inHeatMap2[(latitude,longitude)] = 1
-	return (inData, inHeatMap, inHeatMap2)
+			inHeatMap[(latitude,longitude)] = 1
+
+	return (inData, inHeatMap)
 
 def pickleData(inData, inHeatMap, inHeatMapLong):
 		pickle_out = open("parsedKML.pickle","wb")
@@ -166,7 +149,25 @@ def pickleData(inData, inHeatMap, inHeatMapLong):
 		pickle_out.close()
 		print('Pickled Data')
 
+def unpickleData():
+	pickle_in = open("parsedKML.pickle","rb")
+	outData = pickle.load(pickle_in)
+	pickle_in = open("heatData.pickle","rb")
+	heatmap = pickle.load(pickle_in)
+	
+	return(outData,heatmap)
 
+def createHeatMap(inData, inLevel):
+	outHeatMap = {}
+	for key, value in inData.items():
+		newLat = round(key[0], inLevel)
+		newLong = round(key[1], inLevel)
+		if (newLat,newLong) in outHeatMap:
+			outHeatMap[(newLat,newLong)] = outHeatMap[(newLat,newLong)] + value
+		else:
+			outHeatMap[(newLat,newLong)] = value
+
+	return(outHeatMap)
 
 def describeHeatMap(inHeat):
 	description ={}
@@ -217,7 +218,6 @@ def extractMonthFromYear(inData, inMonth):
 		if entry['time'].month == inMonth:
 			outStructure.append(entry)
 	return(outStructure)
-
 
 def extractDay(inData, inYear, inMonth, inDay):
 	outStructure=[]
