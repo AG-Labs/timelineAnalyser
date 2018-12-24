@@ -6,16 +6,14 @@ import numpy as np
 from shapely import geos
 import timelineAnalysis
 
+llcrnrlon,llcrnrlat, urcrnrlon,urcrnrlat = -10.5,48, 4,59
 
-llcrnrlon = -10.5
-llcrnrlat=48
-urcrnrlon=4
-urcrnrlat=59
+stepCount = 0
 
 myfigure = plt.figure(1)
 
 m = Basemap(llcrnrlon=llcrnrlon,llcrnrlat=llcrnrlat,urcrnrlon=urcrnrlon,urcrnrlat=urcrnrlat,
-             resolution='i', projection='cyl', lat_0 = 39.5, lon_0 = -3.25)
+             resolution='i', projection='tmerc', lat_0 = 39.5, lon_0 = -3.25)
 
 m.drawmapboundary(fill_color='azure')
 m.fillcontinents(color='sandybrown',lake_color='azure')
@@ -42,8 +40,7 @@ squareDataLon, squareDataLat = timelineAnalysis.getSquare(llcrnrlon, llcrnrlat, 
 
 points = m.plot(squareDataLon,squareDataLat, 'bo', latlon = True)
 
-
-point, = m.plot(xpt,ypt,'bo')  # plot a blue dot there
+point, = m.plot(xpt,ypt,'r+')  # plot a blue dot there
 # put some text next to the dot, offset a little bit
 # (the offset is in map projection coordinates)
 annotation = plt.annotate('(%5.1fW,%3.1fN)' % (lon, lat), xy=(xpt,ypt),
@@ -52,19 +49,26 @@ annotation = plt.annotate('(%5.1fW,%3.1fN)' % (lon, lat), xy=(xpt,ypt),
              arrowprops=dict(arrowstyle="->", connectionstyle="arc3"))
 
 def onclick(event):
-	print(event)
-	ix, iy = event.xdata, event.ydata
-	xpti, ypti = m(ix, iy,inverse=True)
-	string = '(%5.1fW,%3.1fN)' % (xpti, ypti)
-	print(string)
-	annotation.xy = (ix, iy)
-	point.set_data([ix], [iy])
-	annotation.set_text(string)
-	plt.gcf().canvas.draw_idle()
+	if event.inaxes is not None:
+		ix, iy = event.xdata, event.ydata
+		xpti, ypti = m(ix, iy,inverse=True)
+		string = '(%5.1fW,%3.1fN)' % (xpti, ypti)
+		print(string)
+		annotation.xy = (ix, iy)
+		point.set_data([ix], [iy])
+		annotation.set_text(string)
+		plt.gcf().canvas.draw_idle()
 
+def onScroll(event):
+	global stepCount
+	stepCount = stepCount + event.step
+	if abs(stepCount) > 50:
+		print(event.button)
+		stepCount = 0
 
 figg = plt.gcf()
 cid = figg.canvas.mpl_connect("button_press_event", onclick)
-
+sid = figg.canvas.mpl_connect("scroll_event", onScroll)
+#make a scroll event 
 
 plt.show()
