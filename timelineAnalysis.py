@@ -2,7 +2,6 @@ import lxml
 import os 
 from fastkml import kml
 import sys
-import pickle
 import json
 import requests
 import datetime
@@ -17,7 +16,7 @@ def main():
 	myGmapsAPIKey = ''
 	#fill in relative path to KML file, have it in a folder due to a JSON file being stored as well
 	cur_path = os.path.dirname(os.path.realpath(__file__))
-	filePath = cur_path + "/HistoryKML/LocationHistory.KML"
+	filePath = cur_path + "/data/LocationHistory2.KML"
 	
 	structedData, heatmapData = prepareData(filePath)
 
@@ -40,29 +39,10 @@ def prepareData(inFilePath):
 	coords = tree.xpath("//gx:coord/text()",namespaces={'gx':'http://www.google.com/kml/ext/2.2'})
 	times = tree.xpath("//xmlns:when/text()", namespaces={'xmlns':'http://www.opengis.net/kml/2.2'})
 	updateData, noData ,since = kmlDateCheck(times[0])
-	#check for a local parsed version of the data
-	if os.path.isfile('parsedKML.pickle'):
-		#if it exists and need updating add the new entries to the start of the file
-		structedData, heatmapData = unpickleData()
-		if updateData:
-			for ind, value in enumerate(times):
-				if value == since:
-					removeFrom = ind + 1
-					break
-			timesToUpdate = times[:removeFrom]
-			coordsToUpdate = coords[:removeFrom]
-			structedData, heatmapData = loadSection(timesToUpdate,coordsToUpdate, structedData, heatmapData)
-			#oce the data has been updated add the newest time to my data file and then pickle 
-			#the parsed data for future useage
-			with open('data.json', 'w') as outfile:
-				json.dump({'time':times[0]}, outfile, indent=4)
-			pickleData(structedData, heatmapData)
-	else:
-		#if it doesnt exist load all from file and generate a heatmap and a date object list of the data
-		structedData, heatmapData = loadAll(times, coords)
-		pickleData(structedData, heatmapData)
-		with open('data.json', 'w') as outfile:
-			json.dump({'time':times[0]}, outfile, indent=4)
+
+	structedData, heatmapData = loadAll(times, coords)		
+	with open('data/data.json', 'w') as outfile:
+		json.dump(structedData, outfile, default=str)
 	return(structedData, heatmapData)
 
 def parseTime2oBJ(inTime):
@@ -118,26 +98,6 @@ def loadSection(inTimes, inCoords, inData, inHeatMap):
 			inHeatMap[(latitude,longitude)] = 1
 
 	return (inData, inHeatMap)
-
-def pickleData(inData, inHeatMap, inHeatMapLong):
-		pickle_out = open("parsedKML.pickle","wb")
-		pickle.dump(inData, pickle_out)
-		pickle_out.close()
-		pickle_out = open("heatData.pickle","wb")
-		pickle.dump(inHeatMap, pickle_out)
-		pickle_out.close()
-		pickle_out = open("heatDataLong.pickle","wb")
-		pickle.dump(inHeatMapLong, pickle_out)
-		pickle_out.close()
-		print('Pickled Data')
-
-def unpickleData():
-	pickle_in = open("parsedKML.pickle","rb")
-	outData = pickle.load(pickle_in)
-	pickle_in = open("heatData.pickle","rb")
-	heatmap = pickle.load(pickle_in)
-	
-	return(outData,heatmap)
 
 def createHeatMap(inData, inLevel):
 	# take in dictionary a round lat longs to the DP specified in inLevel, negative values of inLevel 
@@ -271,7 +231,6 @@ def getSquare(lllon, lllat, urlon, urlat, inData):
 	return(outDataLon, outDataLat)
 
 
-#def printShortDescp(inData):
 #def ringAround():
 
 if __name__ == '__main__':
