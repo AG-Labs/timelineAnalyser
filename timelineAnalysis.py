@@ -10,11 +10,8 @@ import collections
 # the format of the structured data is a list like => {'time':currTime,'lat': latitude,'lon':longitude}
 # the format of the heatmap data is a dict like (latitude,longitude) : int
 
-def main():
-
-	#fill in API key
-	myGmapsAPIKey = ''
-	#fill in relative path to KML file, have it in a folder due to a JSON file being stored as well
+def main():	
+	#get kml from provided value or default
 	cur_path = os.path.dirname(os.path.realpath(__file__))
 	filePath = cur_path + "/data/LocationHistory2.KML"
 	
@@ -27,9 +24,6 @@ def main():
 	endRangeToExtract = datetime.datetime(2018,8,31)
 	myRange = extractRange(structedData,startRangeToExtract, endRangeToExtract)
 
-	#myRequest = 'https://maps.googleapis.com/maps/api/geocode/json?latlng={},{}&key={}'.format(oneLat,oneLong,myGmapsAPIKey)
-	#response =requests.get(myRequest)
-	#print(response.json())
 
 
 def prepareData(inFilePath):
@@ -45,7 +39,7 @@ def prepareData(inFilePath):
 		json.dump(structedData, outfile, default=str)
 	return(structedData, heatmapData)
 
-def parseTime2oBJ(inTime):
+def parseTime2Obj(inTime):
 	#take in a sting representing the time in ISO format (how google stores it in KML data)
 	#return the date and time as a datetime object
 	timeObj = datetime.datetime.strptime(inTime, '%Y-%m-%dT%H:%M:%SZ')
@@ -70,7 +64,7 @@ def loadAll(inTimes, inCoords):
 	# for each entry convert the time to a time object and the lat long to floats and store in a list
 	# check for existance of data in the dictionary if it exists add one to the count, if not add a new entry
 	for item in range(len(inTimes)):
-		currTime = parseTime2oBJ(inTimes[item])
+		currTime = parseTime2Obj(inTimes[item])
 		currCoord = inCoords[item]
 		longitude,latitude = parseKMLCoord(currCoord)
 
@@ -87,7 +81,7 @@ def loadSection(inTimes, inCoords, inData, inHeatMap):
 	# for each entry convert the time to a time object and the lat long to floats and store in a list
 	# check for existance of data in the dictionary if it exists add one to the count, if not add a new entry
 	for item in range(len(inTimes)):
-		currTime = parseTime2oBJ(inTimes[item])
+		currTime = parseTime2Obj(inTimes[item])
 		currCoord = inCoords[item]
 		longitude,latitude = parseKMLCoord(currCoord)
 
@@ -127,12 +121,12 @@ def describeHeatMap(inHeat):
 def kmlDateCheck(inCurrentTime):
 	#take in a time as a string, convert to a datetime object, if a user data file exists load the time value from it
 	# compare the times and determine if the data needs updating, if no file exists assume minimum value of datetime
-	currentTime = parseTime2oBJ(inCurrentTime)
+	currentTime = parseTime2Obj(inCurrentTime)
 
 	if os.path.isfile('data.json'):
 		json_data = open('data.json','r').read()
 		readTime = json.loads(json_data)['time']
-		storedCurrentTime = parseTime2oBJ(readTime)
+		storedCurrentTime = parseTime2Obj(readTime)
 		readAll = False
 	else:
 		storedCurrentTime = datetime.datetime.min
@@ -206,29 +200,6 @@ def countryAnalysis():
 	#return % of len set / len dataset
 
 	pass
-
-def getSquare(lllon, lllat, urlon, urlat, inData):
-	# take in the four corners of a squre and either the keys of a heatamp dict or a 
-	# list of all the parsed data return a list of lat and long points within the specified bounds
-	if isinstance(inData, collections.KeysView): 
-		outDataLat = []
-		outDataLon = []
-		counter = 0
-		for item in inData:
-			if (item[1] > lllon and item[0] > lllat and urlon > item[1] and urlat > item[0]):
-				outDataLat.append(item[0])
-				outDataLon.append(item[1])
-				counter += 1
-	elif isinstance(inData, list):
-		outDataLat = []
-		outDataLon = []
-		counter = 0
-		for item in inData:
-			if (item['lon'] > lllon and item['lat'] > lllat and urlon > item['lon'] and urlat > item['lat']):
-				outDataLat.append(item['lat'])
-				outDataLon.append(item['lon'])
-				counter += 1				
-	return(outDataLon, outDataLat)
 
 
 #def ringAround():
