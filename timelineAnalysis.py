@@ -34,9 +34,11 @@ def prepareData(inFilePath):
 	times = tree.xpath("//xmlns:when/text()", namespaces={'xmlns':'http://www.opengis.net/kml/2.2'})
 	updateData, noData ,since = kmlDateCheck(times[0])
 
-	structedData, heatmapData = loadAll(times, coords)		
+	structedData = loadAll(times, coords)		
+	heatmapData = createHeatMap(structedData, 2)
+	
 	with open('data/data.json', 'w') as outfile:
-		json.dump(structedData, outfile, default=str)
+		json.dump(structedData, outfile, default=str, indent=1)
 	return(structedData, heatmapData)
 
 def parseTime2Obj(inTime):
@@ -60,7 +62,6 @@ def parseKMLCoord(inCoord):
 def loadAll(inTimes, inCoords):
 	# parse all the data from a list of times and coordinates stored as strings
 	structedData = []
-	heatmapDict = {}
 	# for each entry convert the time to a time object and the lat long to floats and store in a list
 	# check for existance of data in the dictionary if it exists add one to the count, if not add a new entry
 	for item in range(len(inTimes)):
@@ -69,12 +70,8 @@ def loadAll(inTimes, inCoords):
 		longitude,latitude = parseKMLCoord(currCoord)
 
 		structedData.append({'time':currTime,'lat': latitude,'lon':longitude})
-		if (latitude,longitude) in heatmapDict:
-			heatmapDict[(latitude,longitude)] += 1
-		else:
-			heatmapDict[(latitude,longitude)] = 1
 
-	return (structedData, heatmapDict)
+	return structedData
 
 def loadSection(inTimes, inCoords, inData, inHeatMap):
 	# parse all the data from a list of times and coordinates stored as strings	
