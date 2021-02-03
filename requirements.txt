@@ -1,3 +1,7 @@
 lxml
 fastkml
 requests
+pycodestyle
+safety
+coverage
+unittest-xml-reporting
