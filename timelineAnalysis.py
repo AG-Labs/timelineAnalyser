@@ -17,14 +17,6 @@ def main():
 	
 	structedData, heatmapData = prepareData(filePath)
 
-	#testing funcitons for extracting parts of the data
-	my2018Data = extractYear(structedData, 2018)
-
-	startRangeToExtract = datetime.datetime(2017,8,1)
-	endRangeToExtract = datetime.datetime(2018,8,31)
-	myRange = extractRange(structedData,startRangeToExtract, endRangeToExtract)
-
-
 
 def prepareData(inFilePath):
 	
@@ -36,6 +28,7 @@ def prepareData(inFilePath):
 
 	structedData = loadAll(times, coords)		
 	heatmapData = createHeatMap(structedData, 2)
+	describedHeatData = describeHeatMap(heatmapData)
 	
 	with open('data/data.json', 'w') as outfile:
 		json.dump(structedData, outfile, default=str, indent=1)
@@ -48,10 +41,10 @@ def parseTime2Obj(inTime):
 	return(timeObj)
 
 def parseKMLCoord(inCoord):
-	#take in the coordinate data as a string with both lat and long separated by a space
-	#split the sting on a space and convert to a floating point number with at most 5 decimal places
-	#5 decimal places represents 1 meters at the equator ( the largest disatnce it will represent) 
-	#needed 4 dp but this keeps all posible inforation that will be required.
+	# Take in the coordinate data as a string with both lat and long separated by a space
+	# split the sting on a space and convert to a floating point number with at most 5 decimal places
+	# 5 decimal places represents 1 meters at the equator ( the largest disatnce it will represent) 
+	# needed 4 dp but this keeps all posible inforation that will be required.
 	longitude,latitude, _ = inCoord.split(' ')
 	intLat = float(latitude)
 	intLong = float(longitude)
@@ -73,23 +66,6 @@ def loadAll(inTimes, inCoords):
 
 	return structedData
 
-def loadSection(inTimes, inCoords, inData, inHeatMap):
-	# parse all the data from a list of times and coordinates stored as strings	
-	# for each entry convert the time to a time object and the lat long to floats and store in a list
-	# check for existance of data in the dictionary if it exists add one to the count, if not add a new entry
-	for item in range(len(inTimes)):
-		currTime = parseTime2Obj(inTimes[item])
-		currCoord = inCoords[item]
-		longitude,latitude = parseKMLCoord(currCoord)
-
-		inData.insert(0,{'time':currTime,'lat': latitude,'lon':longitude})
-		if (latitude,longitude) in inHeatMap:
-			inHeatMap[(latitude,longitude)] += 1
-		else:
-			inHeatMap[(latitude,longitude)] = 1
-
-	return (inData, inHeatMap)
-
 def createHeatMap(inData, inLevel):
 	# take in dictionary a round lat longs to the DP specified in inLevel, negative values of inLevel 
 	# round above the decimal point
@@ -106,7 +82,7 @@ def createHeatMap(inData, inLevel):
 	return(outHeatMap)
 
 def describeHeatMap(inHeat):
-	#******************** check and correct this function*****************
+	# Return a description of the amount of co-ordinates with a number of entries
 	description ={}
 	for entry, value in inHeat.items():
 		if value not in description:
@@ -135,6 +111,39 @@ def kmlDateCheck(inCurrentTime):
 	else:
 		return(False,readAll,readTime)
 
+def extractDate(*, inData, inYear='', inMonth='', inDay='', rangeStart='', rangeEnd=''):
+	#use the bellow functions with some logic to extract a date
+	# clean up rhe below functions as well
+	if (bool(inYear) | bool(inMonth) | bool(inDay)) and (bool(rangeStart) | bool(rangeEnd)):
+		print('Please supply a specific range or a timeframe from which to extract data, not both')
+		raise (SystemExit)
+	elif (bool(rangeStart) ^ bool(rangeEnd)):
+		message = 'Range end is missing' if bool(rangeStart) else 'Range start is missing'
+		print(message)
+		raise (SystemExit)
+	elif (bool(rangeStart) & bool(rangeEnd)):
+		return extractRange(inData,rangeStart, rangeEnd)
+	elif (bool(inYear) | bool(inMonth) | bool(inDay)):
+		print('in timeframe')
+		#to extract a day it needs all three
+		# to extract a month it needs a year
+		if bool(inYear):
+			exYear = extractYear(inData, inYear)
+			if bool(inMonth):
+				exMonth = extractMonth(exYear, inMonth)
+				if bool(inDay):
+					exDay = extractDay(exMonth, inDay)
+					return exDay
+				else:
+					return exMonth
+			else:
+				return exYear
+		else:
+			print('Too low of an increment has been selected without the required higher increments')
+			raise(SystemExit)
+
+
+
 def extractYear(inData, inYear):
 	# take in the structure data as a whole and extact the entries in which the year matches inYear
 	outStructure=[]
@@ -143,17 +152,7 @@ def extractYear(inData, inYear):
 			outStructure.append(entry)
 	return(outStructure)
 
-def extractMonth(inData, inYear, inMonth):
-	# take in the structure data as a whole and extact the entries in which the year matches inYear and 
-	# the month matches inMonth
-	outStructure=[]
-	for entry in inData:
-		if entry['time'].year == inYear:
-			if entry['time'].month == inMonth:
-				outStructure.append(entry)
-	return(outStructure)
-
-def extractMonthFromYear(inData, inMonth):
+def extractMonth(inData, inMonth):
 	# take in an extracted year and extact the entries in which the month matches inMonth
 	outStructure = []
 	for entry in inData:
@@ -161,18 +160,7 @@ def extractMonthFromYear(inData, inMonth):
 			outStructure.append(entry)
 	return(outStructure)
 
-def extractDay(inData, inYear, inMonth, inDay):
-	# take in the structure data as a whole and extact the entries in which the year matches inYear and 
-	# the month matches inMonth and the day matches inDay
-	outStructure=[]
-	for entry in inData:
-		if entry['time'].year == inYear:
-			if entry['time'].month == inMonth:
-				if entry['time'].day == inDay:
-					outStructure.append(entry)
-	return(outStructure)
-
-def extractDayFromMonth(inData, inDay):
+def extractDay(inData, inDay):
 	# take in an extracted month and extact the entries in which the day matches inDay
 	outStructure = []
 	for entry in inData:
@@ -181,8 +169,9 @@ def extractDayFromMonth(inData, inDay):
 	return(outStructure)
 
 def extractRange(inData, inStart, inEnd):
-	# take in the structure data as a whole and extact the values between inStart and inEnd
-	# inStart and inEnd should eb in datetime format
+	# Take in the structure data as a whole and extact the values between inStart and inEnd
+	# inStart and inEnd should be in datetime format
+	# TODO parse the time here
 	outStructure = []
 	for entry in inData:
 		if (entry['time'] > inStart and entry['time'] < inEnd):
