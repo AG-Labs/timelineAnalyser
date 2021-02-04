@@ -14,19 +14,18 @@ import collections
 def main():
 	# get kml from provided value or default
 	cur_path = os.path.dirname(os.path.realpath(__file__))
-	filePath = cur_path + "/data/LocationHistory2.KML"
+	filePath = cur_path + "/data/LocationHistory3.KML"
 
 	structedData = prepare_data(filePath)
-	#heatmapData = create_heat_map(structedData, 2)
+	heatmapData = create_heat_map(structedData, 2)
 
-	print(structedData[0])
-	print(structedData[1])
-	print(structedData[0]==structedData[1])
+	flatData = list(dict.fromkeys(structedData))
 
 
 	with open('data/data.json', 'w') as outfile:
 		json.dump(structedData, outfile, indent=1, cls=structured_entry_encoder)
-
+	with open('data/data2.json', 'w') as outfile:
+		json.dump(flatData, outfile, indent=1, cls=structured_entry_encoder)
 
 def prepare_data(inFilePath):
 	tree = lxml.etree.parse(inFilePath)
@@ -82,8 +81,8 @@ def create_heat_map(inData, inLevel):
 	# ********* extend this to take in either a dict or an array *********
 	outHeatMap = {}
 	for value in inData:
-		newLat = round(value['lat'], inLevel)
-		newLong = round(value['lon'], inLevel)
+		newLat = round(value.lat, inLevel)
+		newLong = round(value.lng, inLevel)
 		if (newLat, newLong) in outHeatMap:
 			outHeatMap[(newLat, newLong)] = outHeatMap[(newLat, newLong)] + 1
 		else:
@@ -101,6 +100,11 @@ def describe_heat_map(inHeat):
 		else:
 			description[value] += 1
 	return description
+
+def flatten_structured_data(inData):
+	flattenedData = []
+	for record in inData:
+		pass
 
 
 def kml_date_check(inCurrentTime):
@@ -219,6 +223,12 @@ class structured_entry:
 
 	def __repr__(self):
 		return {'time': self.time, 'lat': self.lat, 'lon': self.lng}
+
+	def _key(self):
+		return (self.lat, self.lng)
+
+	def __hash__(self):
+		return hash(self._key())
 	
 # subclass JSONEncoder
 class structured_entry_encoder(json.JSONEncoder):
