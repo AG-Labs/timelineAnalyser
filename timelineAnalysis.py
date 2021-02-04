@@ -16,7 +16,16 @@ def main():
 	cur_path = os.path.dirname(os.path.realpath(__file__))
 	filePath = cur_path + "/data/LocationHistory2.KML"
 
-	structedData, heatmapData = prepare_data(filePath)
+	structedData = prepare_data(filePath)
+	#heatmapData = create_heat_map(structedData, 2)
+
+	print(structedData[0])
+	print(structedData[1])
+	print(structedData[0]==structedData[1])
+
+
+	with open('data/data.json', 'w') as outfile:
+		json.dump(structedData, outfile, indent=1, cls=structured_entry_encoder)
 
 
 def prepare_data(inFilePath):
@@ -27,12 +36,7 @@ def prepare_data(inFilePath):
 	updateData, noData, since = kml_date_check(times[0])
 
 	structedData = load_all(times, coords)
-	heatmapData = create_heat_map(structedData, 2)
-	describedHeatData = describe_heat_map(heatmapData)
-
-	with open('data/data.json', 'w') as outfile:
-		json.dump(structedData, outfile, default=str, indent=1)
-	return(structedData, heatmapData)
+	return(structedData)
 
 
 def parse_time_2_obj(inTime):
@@ -65,7 +69,9 @@ def load_all(inTimes, inCoords):
 		currCoord = inCoords[item]
 		longitude, latitude = parse_kml_coord(currCoord)
 
-		structedData.append({'time': currTime, 'lat': latitude, 'lon': longitude})
+		record = structured_entry(currTime, latitude, longitude)
+		#structedData.append({'time': currTime, 'lat': latitude, 'lon': longitude})
+		structedData.append(record)
 
 	return structedData
 
@@ -197,6 +203,27 @@ def country_analysis():
 
 	pass
 
+class structured_entry:
+	def __init__(self, time, lat, lng):
+		self.time = time
+		self.lat = lat
+		self.lng = lng
+	
+	def __str__(self):
+		return "Time: {}, lat: {}, lng: {}".format(self.time, self.lat, self.lng)
+
+	def __eq__(self, other):
+		lats = self.lat == other.lat
+		lngs = self.lng == other.lng
+		return lats & lngs 
+
+	def __repr__(self):
+		return {'time': self.time, 'lat': self.lat, 'lon': self.lng}
+	
+# subclass JSONEncoder
+class structured_entry_encoder(json.JSONEncoder):
+		def default(self, o):
+			return {'time':str(o.time), 'lat': o.lat, 'lng': o.lng}
 
 # def ringAround():
 
