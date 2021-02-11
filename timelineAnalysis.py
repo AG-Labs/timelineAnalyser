@@ -14,13 +14,14 @@ import collections
 def main():
 	# get kml from provided value or default
 	cur_path = os.path.dirname(os.path.realpath(__file__))
-	filePath = cur_path + "/data/LocationHistory3.KML"
+	filePath = cur_path + "/data/LocationHistory2.KML"
 
 	structedData = prepare_data(filePath)
 	heatmapData = create_heat_map(structedData, 2)
+	uniqueData = list(set(structedData))
 
 	with open('data/data.json', 'w') as outfile:
-		json.dump(structedData, outfile, indent=1, cls=structured_entry_encoder)
+		json.dump(unique, outfile, indent=1, cls=structured_entry_encoder)
 
 
 def prepare_data(inFilePath):
@@ -94,11 +95,6 @@ def describe_heat_map(inHeat):
 		else:
 			description[value] += 1
 	return description
-
-def flatten_structured_data(inData):
-	flattenedData = []
-	for record in inData:
-		pass
 
 
 def kml_date_check(inCurrentTime):
