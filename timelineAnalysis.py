@@ -19,13 +19,9 @@ def main():
 	structedData = prepare_data(filePath)
 	heatmapData = create_heat_map(structedData, 2)
 
-	flatData = list(dict.fromkeys(structedData))
-
-
 	with open('data/data.json', 'w') as outfile:
 		json.dump(structedData, outfile, indent=1, cls=structured_entry_encoder)
-	with open('data/data2.json', 'w') as outfile:
-		json.dump(flatData, outfile, indent=1, cls=structured_entry_encoder)
+
 
 def prepare_data(inFilePath):
 	tree = lxml.etree.parse(inFilePath)
@@ -69,7 +65,6 @@ def load_all(inTimes, inCoords):
 		longitude, latitude = parse_kml_coord(currCoord)
 
 		record = structured_entry(currTime, latitude, longitude)
-		#structedData.append({'time': currTime, 'lat': latitude, 'lon': longitude})
 		structedData.append(record)
 
 	return structedData
@@ -78,15 +73,14 @@ def load_all(inTimes, inCoords):
 def create_heat_map(inData, inLevel):
 	# take in dictionary a round lat longs to the DP specified in inLevel, negative values of inLevel
 	# round above the decimal point
-	# ********* extend this to take in either a dict or an array *********
+
+	list(map(lambda x:x.round_coord(inLevel), inData))
 	outHeatMap = {}
 	for value in inData:
-		newLat = round(value.lat, inLevel)
-		newLong = round(value.lng, inLevel)
-		if (newLat, newLong) in outHeatMap:
-			outHeatMap[(newLat, newLong)] = outHeatMap[(newLat, newLong)] + 1
+		if (value.lat, value.lng) in outHeatMap:
+			outHeatMap[(value.lat, value.lng)] = outHeatMap[(value.lat, value.lng)] + 1
 		else:
-			outHeatMap[(newLat, newLong)] = 1
+			outHeatMap[(value.lat, value.lng)] = 1
 
 	return(outHeatMap)
 
@@ -222,13 +216,17 @@ class structured_entry:
 		return lats & lngs 
 
 	def __repr__(self):
-		return {'time': self.time, 'lat': self.lat, 'lon': self.lng}
+		return "Time: {}, lat: {}, lng: {}".format(self.time, self.lat, self.lng)
 
 	def _key(self):
 		return (self.lat, self.lng)
 
 	def __hash__(self):
 		return hash(self._key())
+
+	def round_coord(self, sigFig):
+		self.lat = round(self.lat, sigFig)
+		self.lng = round(self.lng, sigFig)
 	
 # subclass JSONEncoder
 class structured_entry_encoder(json.JSONEncoder):
