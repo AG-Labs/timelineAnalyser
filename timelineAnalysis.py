@@ -14,9 +14,14 @@ import collections
 def main():
 	# get kml from provided value or default
 	cur_path = os.path.dirname(os.path.realpath(__file__))
-	filePath = cur_path + "/data/LocationHistory2.KML"
+	filePath = cur_path + "/data/LocationHistory.KML"
 
-	structedData, heatmapData = prepare_data(filePath)
+	structedData = prepare_data(filePath)
+	heatmapData = create_heat_map(structedData, 2)
+	uniqueData = list(set(structedData))
+
+	with open('data/data.json', 'w') as outfile:
+		json.dump(uniqueData, outfile, indent=1, cls=structured_entry_encoder)
 
 
 def prepare_data(inFilePath):
@@ -27,12 +32,7 @@ def prepare_data(inFilePath):
 	updateData, noData, since = kml_date_check(times[0])
 
 	structedData = load_all(times, coords)
-	heatmapData = create_heat_map(structedData, 2)
-	describedHeatData = describe_heat_map(heatmapData)
-
-	with open('data/data.json', 'w') as outfile:
-		json.dump(structedData, outfile, default=str, indent=1)
-	return(structedData, heatmapData)
+	return(structedData)
 
 
 def parse_time_2_obj(inTime):
@@ -65,7 +65,8 @@ def load_all(inTimes, inCoords):
 		currCoord = inCoords[item]
 		longitude, latitude = parse_kml_coord(currCoord)
 
-		structedData.append({'time': currTime, 'lat': latitude, 'lon': longitude})
+		record = structured_entry(currTime, latitude, longitude)
+		structedData.append(record)
 
 	return structedData
 
@@ -73,15 +74,14 @@ def load_all(inTimes, inCoords):
 def create_heat_map(inData, inLevel):
 	# take in dictionary a round lat longs to the DP specified in inLevel, negative values of inLevel
 	# round above the decimal point
-	# ********* extend this to take in either a dict or an array *********
+
+	list(map(lambda x: x.round_coord(inLevel), inData))
 	outHeatMap = {}
 	for value in inData:
-		newLat = round(value['lat'], inLevel)
-		newLong = round(value['lon'], inLevel)
-		if (newLat, newLong) in outHeatMap:
-			outHeatMap[(newLat, newLong)] = outHeatMap[(newLat, newLong)] + 1
+		if (value.lat, value.lng) in outHeatMap:
+			outHeatMap[(value.lat, value.lng)] = outHeatMap[(value.lat, value.lng)] + 1
 		else:
-			outHeatMap[(newLat, newLong)] = 1
+			outHeatMap[(value.lat, value.lng)] = 1
 
 	return(outHeatMap)
 
@@ -196,6 +196,40 @@ def country_analysis():
 	# return % of len set / len dataset
 
 	pass
+
+
+class structured_entry:
+	def __init__(self, time, lat, lng):
+		self.time = time
+		self.lat = lat
+		self.lng = lng
+
+	def __str__(self):
+		return "Time: {}, lat: {}, lng: {}".format(self.time, self.lat, self.lng)
+
+	def __eq__(self, other):
+		lats = self.lat == other.lat
+		lngs = self.lng == other.lng
+		return lats & lngs
+
+	def __repr__(self):
+		return "Time: {}, lat: {}, lng: {}".format(self.time, self.lat, self.lng)
+
+	def _key(self):
+		return (self.lat, self.lng)
+
+	def __hash__(self):
+		return hash(self._key())
+
+	def round_coord(self, sigFig):
+		self.lat = round(self.lat, sigFig)
+		self.lng = round(self.lng, sigFig)
+
+
+# subclass JSONEncoder
+class structured_entry_encoder(json.JSONEncoder):
+	def default(self, o):
+		return {'time': str(o.time), 'lat': o.lat, 'lng': o.lng}
 
 
 # def ringAround():
