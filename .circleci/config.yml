@@ -39,7 +39,7 @@ jobs:
           pkg-manager: pip
       - run:
           command: |
-            pycodestyle --count --config ./.pycodestyles --exclude ./venv ./
+            pycodestyle --count --config ./.pycodestyles --exclude ./venv,./testData.py ./
           name: Format Check
   dependency-audit:
     executor: python/default
